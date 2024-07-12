@@ -35,7 +35,7 @@ TOKENIZER_PATH = os.environ.get("TOKENIZER_PATH", MODEL_PATH)
 
 print(f"tokenizer_path: {TOKENIZER_PATH}")
 
-style_message = "你是一位心理咨询师，回复字数不能超过300，用心理咨询师的语言沟通风格。"
+style_message = "你是一位心理咨询师，回复字数不能超过300，用心理咨询师的语言沟通风格，回复中不要有多个条目。"
 set_prompt_info = "成功设置prompt"
 
 
