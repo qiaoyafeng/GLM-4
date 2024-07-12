@@ -27,8 +27,16 @@ from transformers import (
 ModelType = Union[PreTrainedModel, PeftModelForCausalLM]
 TokenizerType = Union[PreTrainedTokenizer, PreTrainedTokenizerFast]
 
-MODEL_PATH = os.environ.get('MODEL_PATH', 'THUDM/glm-4-9b-chat')
+MODEL_PATH = os.environ.get('MODEL_PATH', '/opt/chatglm/glm-4-9b-chat')
+
+print(f"model_path: {MODEL_PATH}")
+
 TOKENIZER_PATH = os.environ.get("TOKENIZER_PATH", MODEL_PATH)
+
+print(f"tokenizer_path: {TOKENIZER_PATH}")
+
+style_message = "你是一位心理咨询师，回复字数不能超过300，用心理咨询师的语言沟通风格。"
+set_prompt_info = "成功设置prompt"
 
 
 def _resolve_path(path: Union[str, Path]) -> Path:
@@ -99,13 +107,15 @@ def parse_text(text):
     return text
 
 
-def predict(history, prompt, max_length, top_p, temperature):
+def predict(history, prompt, style, max_length, top_p, temperature):
+    print(f"predict----: history: {history}, prompt: {prompt}, style: {style}")
     stop = StopOnTokens()
     messages = []
-    if prompt:
-        messages.append({"role": "system", "content": prompt})
+
     for idx, (user_msg, model_msg) in enumerate(history):
         if prompt and idx == 0:
+            continue
+        if user_msg == prompt and model_msg == prompt:
             continue
         if idx == len(history) - 1 and not model_msg:
             messages.append({"role": "user", "content": user_msg})
@@ -114,12 +124,14 @@ def predict(history, prompt, max_length, top_p, temperature):
             messages.append({"role": "user", "content": user_msg})
         if model_msg:
             messages.append({"role": "assistant", "content": model_msg})
-
+    if prompt or style:
+        messages.append({"role": "system", "content": ",".join([style, prompt])})
+    print(f"predict----: messages: {messages}")
     model_inputs = tokenizer.apply_chat_template(messages,
                                                  add_generation_prompt=True,
                                                  tokenize=True,
                                                  return_tensors="pt").to(next(model.parameters()).device)
-    streamer = TextIteratorStreamer(tokenizer, timeout=60, skip_prompt=True, skip_special_tokens=True)
+    streamer = TextIteratorStreamer(tokenizer, timeout=600, skip_prompt=True, skip_special_tokens=True)
     generate_kwargs = {
         "input_ids": model_inputs,
         "streamer": streamer,
@@ -140,8 +152,23 @@ def predict(history, prompt, max_length, top_p, temperature):
 
 
 with gr.Blocks() as demo:
-    gr.HTML("""<h1 align="center">GLM-4-9B Gradio Simple Chat Demo</h1>""")
+    gr.HTML("""<h1 align="center">HXQ Chat</h1>""")
     chatbot = gr.Chatbot()
+
+    def user(query, history):
+        return "", history + [[parse_text(query), ""]]
+
+
+    def set_prompt(prompt_text):
+        print(f"set_prompt: {prompt_text}")
+        return [[parse_text(prompt_text), set_prompt_info]]
+
+    def change_style(choice):
+        print(f"change_style: {choice}")
+        if choice == 1:
+            return style_message
+        else:
+            return ""
 
     with gr.Row():
         with gr.Column(scale=3):
@@ -153,26 +180,22 @@ with gr.Blocks() as demo:
             prompt_input = gr.Textbox(show_label=False, placeholder="Prompt", lines=10, container=False)
             pBtn = gr.Button("Set Prompt")
         with gr.Column(scale=1):
+            style_radio = gr.Radio(
+                [("简洁模式", 1), ("详细模式", 2)], value=1, label="请根据需求选择回复模式"
+            )
+            style_input = gr.Textbox(show_label=False, interactive=True, visible=False, value=style_message)
+            style_radio.change(fn=change_style, inputs=style_radio, outputs=style_input)
             emptyBtn = gr.Button("Clear History")
-            max_length = gr.Slider(0, 32768, value=8192, step=1.0, label="Maximum length", interactive=True)
-            top_p = gr.Slider(0, 1, value=0.8, step=0.01, label="Top P", interactive=True)
-            temperature = gr.Slider(0.01, 1, value=0.6, step=0.01, label="Temperature", interactive=True)
-
-
-    def user(query, history):
-        return "", history + [[parse_text(query), ""]]
-
-
-    def set_prompt(prompt_text):
-        return [[parse_text(prompt_text), "成功设置prompt"]]
-
+            max_length = gr.Slider(0, 32768, value=700, step=1.0, label="Maximum length", interactive=True)
+            top_p = gr.Slider(0, 1, value=0.4, step=0.01, label="Top P", interactive=True)
+            temperature = gr.Slider(0.01, 1, value=0.4, step=0.01, label="Temperature", interactive=True)
 
     pBtn.click(set_prompt, inputs=[prompt_input], outputs=chatbot)
 
     submitBtn.click(user, [user_input, chatbot], [user_input, chatbot], queue=False).then(
-        predict, [chatbot, prompt_input, max_length, top_p, temperature], chatbot
+        predict, [chatbot, prompt_input, style_input, max_length, top_p, temperature], chatbot
     )
     emptyBtn.click(lambda: (None, None), None, [chatbot, prompt_input], queue=False)
 
 demo.queue()
-demo.launch(server_name="127.0.0.1", server_port=8000, inbrowser=True, share=True)
+demo.launch(server_name="0.0.0.0", server_port=32101, inbrowser=True, share=True, debug=True, show_error=True)
