@@ -152,7 +152,7 @@ def predict(history, prompt, style, max_length, top_p, temperature):
 
 
 with gr.Blocks() as demo:
-    gr.HTML("""<h1 align="center">HXQ Chat</h1>""")
+    gr.HTML("""<h1 align="center">好心情大语言模型</h1>""")
     chatbot = gr.Chatbot()
 
     def user(query, history):
@@ -177,7 +177,7 @@ with gr.Blocks() as demo:
             with gr.Column(min_width=32, scale=1):
                 submitBtn = gr.Button("Submit")
         with gr.Column(scale=1):
-            prompt_input = gr.Textbox(show_label=False, placeholder="Prompt", lines=10, container=False)
+            prompt_input = gr.Textbox(show_label=False, value="你是心理咨询师，名字叫心心。", lines=10, container=False)
             pBtn = gr.Button("Set Prompt")
         with gr.Column(scale=1):
             style_radio = gr.Radio(
@@ -186,9 +186,9 @@ with gr.Blocks() as demo:
             style_input = gr.Textbox(show_label=False, interactive=True, visible=False, value=style_message)
             style_radio.change(fn=change_style, inputs=style_radio, outputs=style_input)
             emptyBtn = gr.Button("Clear History")
-            max_length = gr.Slider(0, 32768, value=700, step=1.0, label="Maximum length", interactive=True)
-            top_p = gr.Slider(0, 1, value=0.4, step=0.01, label="Top P", interactive=True)
-            temperature = gr.Slider(0.01, 1, value=0.4, step=0.01, label="Temperature", interactive=True)
+            max_length = gr.Slider(0, 32768, value=700, step=1.0, label="Maximum length", show_label=False, visible=False, interactive=True)
+            top_p = gr.Slider(0, 1, value=0.4, step=0.01, label="Top P", show_label=False, visible=False, interactive=True)
+            temperature = gr.Slider(0.01, 1, value=0.4, step=0.01, label="Temperature", show_label=False,visible=False, interactive=True)
 
     pBtn.click(set_prompt, inputs=[prompt_input], outputs=chatbot)
 
