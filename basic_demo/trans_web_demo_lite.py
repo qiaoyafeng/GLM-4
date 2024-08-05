@@ -114,7 +114,7 @@ def predict(history, prompt, max_length, top_p, temperature):
             messages.append({"role": "user", "content": user_msg})
         if model_msg:
             messages.append({"role": "assistant", "content": model_msg})
-
+    print(f"predict----: messages: {messages}")
     model_inputs = tokenizer.apply_chat_template(messages,
                                                  add_generation_prompt=True,
                                                  tokenize=True,
